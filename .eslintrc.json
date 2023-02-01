@@ -17,5 +17,9 @@
         "react"
     ],
     "rules": {
+        "semi": [2, "always"],
+        "quotes": ["error", "double"],
+        "comma-dangle": ["error", "never"],
+        "space-before-function-paren": ["error", "always"]    
     }
 }
