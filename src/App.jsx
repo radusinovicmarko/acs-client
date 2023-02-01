@@ -1,8 +1,9 @@
 import { createTheme, ThemeProvider } from "@mui/material";
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Router } from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import "./App.css";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import { state } from "./redux/slices/userSlice";
 
@@ -34,9 +35,19 @@ function App () {
 
   if (!authenticated) return <Login />;
 
+  console.log("1");
+
   return (
     <Router>
       <ThemeProvider theme={theme}>
+        <Routes>
+        <Route
+          exact
+          path="/"
+          element={<Home />}
+        />
+        <Route path="*" element={<Navigate to={"/"} />} />
+        </Routes>
       </ThemeProvider>
     </Router>
   );
