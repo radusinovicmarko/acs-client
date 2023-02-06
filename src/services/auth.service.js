@@ -15,7 +15,10 @@ export const login = (username, password) =>
 
 export const state = () => securedInstance.get("/auth/state").then((res) => res.data);
 
+export const logout = (username) => securedInstance.post("/auth/logout", username);
+
 export default {
   login,
-  state
+  state,
+  logout
 };

@@ -11,8 +11,11 @@ export const state = createAsyncThunk("user/state", (_, { rejectWithValue }) =>
   authService.state()
 );
 
+export const logout = createAsyncThunk("user/logout", (username, _) =>
+  authService.logout(username)
+);
+
 const logoutAction = (state, action) => {
-  authService.logout();
   state.activated = false;
   state.authenticated = false;
   state.loading = false;
@@ -37,7 +40,6 @@ const userSlice = createSlice({
     user: null
   },
   reducers: {
-    logout: logoutAction,
     setKeystorePassword: (state, action) => {
       state.keystorePassword = action.payload;
     }
@@ -58,7 +60,8 @@ const userSlice = createSlice({
       state.authenticationFailed = true;
       state.loading = false;
     });
+    builder.addCase(logout.fulfilled, logoutAction);
   }
 });
-export const { logout } = userSlice.actions;
+export const { setKeystorePassword } = userSlice.actions;
 export default userSlice.reducer;
