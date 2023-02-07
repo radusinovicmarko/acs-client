@@ -33,16 +33,10 @@ const onSuccessAuth = (state, action) => {
 const userSlice = createSlice({
   name: "user",
   initialState: {
-    keystorePassword: "",
     authenticated: false,
     authenticationFailed: false,
     loading: false,
     user: null
-  },
-  reducers: {
-    setKeystorePassword: (state, action) => {
-      state.keystorePassword = action.payload;
-    }
   },
   extraReducers: (builder) => {
     builder.addCase(login.fulfilled, onSuccessAuth);

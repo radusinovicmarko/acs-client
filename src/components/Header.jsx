@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import { LogoutOutlined } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../redux/slices/userSlice";
+import { clear } from "../redux/slices/chatSlice";
 
 const Header = () => {
   const dispatch = useDispatch();
@@ -23,7 +24,10 @@ const Header = () => {
             startIcon={<LogoutOutlined />}
             variant="outlined"
             color="inherit"
-            onClick={() => dispatch(logout({ username: user.username }))}
+            onClick={() => {
+              dispatch(logout({ username: user.username }));
+              dispatch(clear());
+            }}
           >
             Logout
           </Button>

@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
@@ -8,14 +7,14 @@ import Box from "@mui/material/Box";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
-import { Grid, IconButton, InputAdornment, Stack } from "@mui/material";
+import { Grid, IconButton, InputAdornment } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
-import { login, setKeystorePassword } from "../redux/slices/userSlice";
+import { login } from "../redux/slices/userSlice";
 import CustomSnackbar from "../components/CustomSnackbar";
 import { unwrapResult } from "@reduxjs/toolkit";
 import forge from "node-forge";
-import authService from "../services/auth.service";
+import { setCertificate } from "../redux/slices/chatSlice";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -23,8 +22,10 @@ const Login = () => {
   const [showKeystorePassword, setShowKeystorePassword] = useState(false);
   const handleClickShowPassword = () => setShowPassword(!showPassword);
   const handleMouseDownPassword = () => setShowPassword(!showPassword);
-  const handleClickShowKeystorePassword = () => setShowKeystorePassword(!showKeystorePassword);
-  const handleMouseDownKeystorePassword = () => setShowKeystorePassword(!showKeystorePassword);
+  const handleClickShowKeystorePassword = () =>
+    setShowKeystorePassword(!showKeystorePassword);
+  const handleMouseDownKeystorePassword = () =>
+    setShowKeystorePassword(!showKeystorePassword);
   const [credentials, setCredentials] = useState({
     username: "",
     password: "",
@@ -35,10 +36,14 @@ const Login = () => {
     message: "",
     type: "error"
   });
-  const [certFile, setCertFile] = useState(null);
-  const [publicKey, setPublicKey] = useState(null);
+  const [certFile] = useState(null);
 
   useEffect(() => {
+    /* window.addEventListener("beforeunload", (e) => {
+      e.preventDefault();
+      localStorage.setItem("aaa", "asfasf");
+      e.returnValue = "Are you sure";
+    }); */
     if (certFile) {
       const reader = new FileReader();
       reader.onload = function (e) {
@@ -87,69 +92,28 @@ const Login = () => {
 
         console.log(JSON.stringify({ key: aesKey, iv: aesIv }));
 
-        const rsaEncr = pubKey.encrypt(JSON.stringify({ key: aesKey, iv: aesIv }));
+        const rsaEncr = pubKey.encrypt(
+          JSON.stringify({ key: aesKey, iv: aesIv })
+        );
         const rsaDecr = key.decrypt(rsaEncr);
         console.log(rsaDecr);
       };
       reader.readAsBinaryString(certFile);
-
-      /* certFile.readAsBinaryString()
-        .then((cert) => {
-          /* const handleCertificate = async (certificate) => {
-          // Convert the certificate from PEM format to an ArrayBuffer
-            const x = certificate.slice(certificate.indexOf("-----BEGIN CERTIFICATE-----")).replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, "");
-            const binaryCert = window.atob(x);
-            const arrayBuffer = new Uint8Array(binaryCert.length).map((_, i) => binaryCert.charCodeAt(i));
-
-            // Load the certificate using pkijs
-            const cert = new Certificate({ schema: arrayBuffer });
-
-            // Get the public key from the certificate
-            const subjectPublicKeyInfo = cert.subjectPublicKeyInfo;
-            const publicKeyBuffer = subjectPublicKeyInfo.toSchema().toBER(false);
-
-            setPublicKey(publicKeyBuffer);
-          };
-          handleCertificate(cert);
-          // decode p12 from base64
-          // const p12Der = forge.util.decode64(cert);
-          // get p12 as ASN.1 object
-
-        }); */
     }
   }, [certFile]);
 
-  const x = (res) => {
-    const p12Der = forge.util.decode64(res);
-    // binary data
-    const p12Asn1 = forge.asn1.fromDer(p12Der);
-    // decrypt p12 using the password 'password'
-    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, "sigurnost");
-    console.log(p12);
-    const bags = p12.getBags({ friendlyName: "marko12" });
-    console.log(bags);
-    // private key
-    const key = bags.friendlyName[0].key;
-    console.log(key);
-    // cert
-    const cert = bags.friendlyName[1];
-    console.log(cert);
-
-    const p12Der1 = forge.asn1.toDer(p12Asn1).getBytes();
-    const p12b64 = forge.util.encode64(p12Der1);
-    console.log(p12b64);
-  };
-
   const handleSubmit = (event) => {
     event.preventDefault();
-    /* authService.login(credentials.username, credentials.password).then((res) => {
-      console.log(res);
-      x(res.certificate);
-    }); */
     dispatch(login(credentials))
       .then(unwrapResult)
-      .then(() => {
-        dispatch(setKeystorePassword(credentials.keystorePassword));
+      .then((res) => {
+        dispatch(
+          setCertificate({
+            cert: res.certificate,
+            password: credentials.keystorePassword,
+            cn: res.username
+          })
+        );
       })
       .catch(() =>
         setSnackbarState({
@@ -186,114 +150,103 @@ const Login = () => {
           onSubmit={handleSubmit}
           sx={{ mt: 1 }}
         >
-            <Container maxWidth="xs">
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="username"
-                label="Username"
-                name="username"
-                autoComplete="username"
-                value={credentials.username}
-                onChange={(event) =>
-                  setCredentials({
-                    ...credentials,
-                    username: event.target.value
-                  })
-                }
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                type={showPassword ? "text" : "password"}
-                name="password"
-                label="Password"
-                id="password"
-                autoComplete="off"
-                value={credentials.password}
-                onChange={(event) =>
-                  setCredentials({
-                    ...credentials,
-                    password: event.target.value
-                  })
-                }
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleClickShowPassword}
-                        onMouseDown={handleMouseDownPassword}
-                      >
-                        {showPassword ? <Visibility /> : <VisibilityOff />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={12}>
-              <Stack direction="column" rowGap={1}>
-                <Button variant="outlined" color="inherit" component="label">
-                  Otpremite avatar
-                  <input
-                    hidden
-                    accept="*"
-                    type="file"
-                    onChange={(event) => setCertFile(event.target.files[0])}
-                  />
+          <Container maxWidth="xs">
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="username"
+                  label="Username"
+                  name="username"
+                  autoComplete="username"
+                  value={credentials.username}
+                  onChange={(event) =>
+                    setCredentials({
+                      ...credentials,
+                      username: event.target.value
+                    })
+                  }
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  required
+                  fullWidth
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  label="Password"
+                  id="password"
+                  autoComplete="off"
+                  value={credentials.password}
+                  onChange={(event) =>
+                    setCredentials({
+                      ...credentials,
+                      password: event.target.value
+                    })
+                  }
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                        >
+                          {showPassword ? <Visibility /> : <VisibilityOff />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  required
+                  type={showKeystorePassword ? "text" : "password"}
+                  name="keystorePassword"
+                  label="Keystore Password"
+                  autoComplete="off"
+                  value={credentials.keystorePassword}
+                  onChange={(event) =>
+                    setCredentials({
+                      ...credentials,
+                      keystorePassword: event.target.value
+                    })
+                  }
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowKeystorePassword}
+                          onMouseDown={handleMouseDownKeystorePassword}
+                        >
+                          {showKeystorePassword
+                            ? (
+                            <Visibility />
+                              )
+                            : (
+                            <VisibilityOff />
+                              )}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  sx={{ mt: 3, mb: 2 }}
+                >
+                  Log-In
                 </Button>
-                {certFile && (
-                  <Typography>Otpremljeni avatar: {JSON.stringify(publicKey)}</Typography>
-                )}
-              </Stack>
+              </Grid>
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-
-                fullWidth
-                type={showKeystorePassword ? "text" : "password"}
-                name="keystorePassword"
-                label="Keystore Password"
-                autoComplete="off"
-                value={credentials.keystorePassword}
-                onChange={(event) =>
-                  setCredentials({
-                    ...credentials,
-                    keystorePassword: event.target.value
-                  })
-                }
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleClickShowKeystorePassword}
-                        onMouseDown={handleMouseDownKeystorePassword}
-                      >
-                        {showKeystorePassword ? <Visibility /> : <VisibilityOff />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-              >
-                Log-In
-              </Button>
-            </Grid>
-          </Grid>
           </Container>
         </Box>
       </Box>
