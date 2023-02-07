@@ -1,4 +1,4 @@
-import forge from "node-forge";
+import forge, { pki } from "node-forge";
 
 export const getCertificateFromDer = (cert, password, cn) => {
   const p12Der = forge.util.decode64(cert);
@@ -19,7 +19,58 @@ export const createAesKey = () => {
   return { aesKey, aesIv, alg: "AES-CBC" };
 };
 
+export const encryptWithPublicKey = (pubKey, data) => {
+  return pubKey.encrypt(data);
+};
+
+export const decryptWithPrivateKey = (privKey, data) => {
+  return privKey.decrypt(data);
+};
+
+export const certificateToPem = (cert) => {
+  return pki.certificateToPem(cert);
+};
+
+export const certificateFromPem = (pem) => {
+  return pki.certificateFromPem(pem);
+};
+
+export const pubKeyToPem = (pubKey) => {
+  return pki.publicKeyToPem(pubKey);
+};
+
+export const pubKeyFromPem = (pem) => {
+  return pki.privateKeyFromPem(pem);
+};
+
+export const encyptAes = (aesKey, message) => {
+  const cipher = forge.cipher.createCipher(aesKey.alg, aesKey.aesKey);
+  cipher.start({ iv: aesKey.aesIv });
+  cipher.update(forge.util.createBuffer(JSON.stringify(message)));
+  cipher.finish();
+  const out = cipher.output;
+  console.log(out);
+  return out;
+};
+
+export const decryptAes = (aesKey, messageEnc) => {
+  const decipher = forge.cipher.createDecipher(aesKey.alg, aesKey.aesKey);
+  decipher.start({ iv: aesKey.aesIv });
+  console.log(messageEnc);
+  decipher.update(forge.util.createBuffer(messageEnc));
+  decipher.finish();
+  return JSON.parse(decipher.output);
+};
+
 export default {
   getCertificateFromDer,
-  createAesKey
+  createAesKey,
+  encryptWithPublicKey,
+  decryptWithPrivateKey,
+  certificateToPem,
+  certificateFromPem,
+  pubKeyToPem,
+  pubKeyFromPem,
+  encyptAes,
+  decryptAes
 };

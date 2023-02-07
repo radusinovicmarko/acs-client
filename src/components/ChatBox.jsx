@@ -1,25 +1,62 @@
 import { SendOutlined } from "@mui/icons-material";
-import { Button, Grid, TextField, Typography } from "@mui/material";
+import {
+  Button,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  TextField,
+  Typography
+} from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
+import PropTypes from "prop-types";
+import { createSelector } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
+import moment from "moment";
 
-const ChatBox = () => {
+const ChatBox = (props) => {
+  const { username, onSend } = props;
   const [content, setContent] = useState("");
 
-  const create = () => {
-
-  };
+  const selector = createSelector(
+    (state) => state.chat,
+    (chat) => chat.connectedUsers.filter((u) => u.username === username)[0].messages
+  );
+  const messages = useSelector(selector);
 
   return (
     <Box sx={{ pr: 4 }}>
-        <Typography variant="h5" sx={{ textAlign: "center", m: 0, mt: 1, height: "20px" }}>
-          Korisnik
-        </Typography>
-      <Box sx={{ border: 1, borderColor: "inherit", borderRadius: 1, mt: "20px", minHeight: "70vh" }}></Box>
+      <Typography
+        variant="h5"
+        sx={{ textAlign: "center", m: 0, mt: 1, height: "20px" }}
+      >
+        Chat with {username}
+      </Typography>
+      <Box
+        sx={{
+          border: 1,
+          borderColor: "inherit",
+          borderRadius: 1,
+          mt: "20px",
+          minHeight: "70vh"
+        }}
+      >
+        <List>
+          {messages.map((m) => (
+            <ListItem key={Math.random()}>
+              <ListItemText primary={m.content} secondary={moment(m.dateTime).format("DD. MM. yyyy. HH:mm:ss")} />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
       <Box
         component="form"
         method="post"
-        onSubmit={create}
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSend(content);
+        }}
         sx={{
           m: 0,
           mt: 1,
@@ -39,7 +76,8 @@ const ChatBox = () => {
               multiline
               minRows={1}
               value={content}
-              onChange={(event) => setContent(event.target.value)} />
+              onChange={(event) => setContent(event.target.value)}
+            />
           </Grid>
           <Grid item xs={2}>
             <Button
@@ -56,6 +94,11 @@ const ChatBox = () => {
       </Box>
     </Box>
   );
+};
+
+ChatBox.propTypes = {
+  username: PropTypes.string,
+  onSend: PropTypes.func
 };
 
 export default ChatBox;

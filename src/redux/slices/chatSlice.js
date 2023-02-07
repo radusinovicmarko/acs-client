@@ -23,7 +23,7 @@ const chatSlice = createSlice({
     clear: (state, action) => {
       state.activeUsers = [];
       state.certificate = null;
-      state.connectedUsers = new Map();
+      state.connectedUsers = [];
     },
     addRequest: (state, action) => {
       if (state.requests.filter((r) => r.id === action.payload.id).length === 0) {
@@ -38,8 +38,18 @@ const chatSlice = createSlice({
         state.requests = state.requests.filter((u) => u.username !== connectedUser.username);
         state.connectedUsers = [...state.connectedUsers, connectedUser];
       }
+    },
+    addMessage: (state, action) => {
+      const { username, message } = action.payload;
+      state.connectedUsers.forEach((u) => {
+        if (u.username === username) {
+          if (u.messages.filter((m) => m.dateTime === message.dateTime).length === 0) {
+            u.messages = [...u.messages, message];
+          }
+        }
+      });
     }
   }
 });
-export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser } = chatSlice.actions;
+export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser, addMessage } = chatSlice.actions;
 export default chatSlice.reducer;

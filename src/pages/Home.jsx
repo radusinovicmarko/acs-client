@@ -12,12 +12,14 @@ import {
 } from "@mui/material";
 import { createSelector } from "@reduxjs/toolkit";
 import { Stomp } from "@stomp/stompjs";
+import moment from "moment/moment";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import SockJS from "sockjs-client";
 import ChatBox from "../components/ChatBox";
 import {
   addConnectedUser,
+  addMessage,
   addRequest,
   setActiveUsers
 } from "../redux/slices/chatSlice";
@@ -30,20 +32,56 @@ const Home = () => {
   const [stompClient, setStompClient] = useState(null);
   const [sendKey, setSendKey] = useState(null);
   const [receiveKey, setReceiveKey] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [messageReceived, setMessageReceived] = useState(null);
 
   const selector = createSelector(
     (state) => state.chat,
     (chat) => chat
   );
-  const { certificate, activeUsers, requests, connectedUsers } = useSelector(selector);
+  const { certificate, activeUsers, requests, connectedUsers, privateKey } =
+    useSelector(selector);
+
+  const sendMessage = (content) => {
+    const data = {
+      content,
+      dateTime: moment()
+    };
+    const message = {
+      senderUsername: user.username,
+      receiverUsername: selectedUser.username,
+      data: JSON.stringify(cryptoService.encyptAes(selectedUser.aesKey, data)),
+      noSegments: 1,
+      segmentSerial: 1,
+      syn: false,
+      sendCert: false,
+      ackCert: false,
+      sendKey: false,
+      ackKey: false,
+      fin: false
+    };
+    console.log(JSON.parse(message.data));
+    stompClient.send("/acs/message", {}, JSON.stringify(message));
+    dispatch(addMessage({
+      username: selectedUser.username,
+      message: data
+    }));
+  };
 
   useEffect(() => {
     if (sendKey) {
+      const receiverPubKey = cryptoService.certificateFromPem(
+        sendKey.data
+      ).publicKey;
       const aesKey = cryptoService.createAesKey();
+      const aesKeyEnc = cryptoService.encryptWithPublicKey(
+        receiverPubKey,
+        JSON.stringify(aesKey)
+      );
       const msg = {
         senderUsername: user.username,
         receiverUsername: sendKey.senderUsername,
-        data: JSON.stringify(aesKey),
+        data: JSON.stringify(aesKeyEnc),
         noSegments: 1,
         segmentSerial: 1,
         syn: true,
@@ -55,10 +93,13 @@ const Home = () => {
       };
       console.log(msg);
       stompClient.send("/acs/message", {}, JSON.stringify(msg));
-      dispatch(addConnectedUser({
-        username: sendKey.senderUsername,
-        aesKey
-      }));
+      dispatch(
+        addConnectedUser({
+          username: sendKey.senderUsername,
+          aesKey,
+          messages: []
+        })
+      );
     }
   }, [sendKey]);
 
@@ -67,7 +108,7 @@ const Home = () => {
       const msg = {
         senderUsername: user.username,
         receiverUsername: receiveKey.senderUsername,
-        data: JSON.stringify(receiveKey.data),
+        data: receiveKey.data,
         noSegments: 1,
         segmentSerial: 1,
         syn: true,
@@ -77,20 +118,39 @@ const Home = () => {
         ackKey: true,
         fin: false
       };
-      console.log(msg);
       stompClient.send("/acs/message", {}, JSON.stringify(msg));
-      dispatch(addConnectedUser({
-        username: receiveKey.senderUsername,
-        aesKey: receiveKey.data
-      }));
+      dispatch(
+        addConnectedUser({
+          username: receiveKey.senderUsername,
+          aesKey: JSON.parse(
+            cryptoService.decryptWithPrivateKey(
+              privateKey,
+              JSON.parse(receiveKey.data)
+            )
+          ),
+          messages: []
+        })
+      );
     }
   }, [receiveKey]);
+
+  useEffect(() => {
+    if (messageReceived) {
+      const data = JSON.parse(messageReceived.data);
+      console.log(data);
+      const aesKey = connectedUsers.filter((u) => u.username === messageReceived.senderUsername)[0].aesKey;
+      dispatch(addMessage({
+        username: messageReceived.senderUsername,
+        message: cryptoService.decryptAes(aesKey, data)
+      }));
+    }
+  }, [messageReceived]);
 
   const connect = (receiver) => {
     const message = {
       senderUsername: user.username,
       receiverUsername: receiver.username,
-      data: JSON.stringify(certificate),
+      data: cryptoService.certificateToPem(certificate),
       noSegments: 1,
       segmentSerial: 1,
       syn: true,
@@ -108,7 +168,7 @@ const Home = () => {
     const message = {
       senderUsername: user.username,
       receiverUsername: receiver.username,
-      data: JSON.stringify(certificate),
+      data: cryptoService.certificateToPem(certificate),
       noSegments: 1,
       segmentSerial: 1,
       syn: true,
@@ -131,29 +191,23 @@ const Home = () => {
         dispatch(setActiveUsers(JSON.parse(message.body)));
       });
       stompClient.subscribe("/queue/messages/" + user.username, (message) => {
-        let msg = JSON.parse(JSON.parse(message.body));
-        msg = { ...msg, data: JSON.parse(msg.data) };
-        console.log(msg);
+        const msg = JSON.parse(JSON.parse(message.body));
         if (msg.syn) {
           if (msg.sendCert && !msg.ackCert) {
-            console.log(1);
-            dispatch(addRequest({
-              username: msg.senderUsername,
-              cert: msg.data
-            }));
+            dispatch(
+              addRequest({
+                username: msg.senderUsername,
+                cert: cryptoService.certificateFromPem(msg.data)
+              })
+            );
           } else if (msg.sendCert && msg.ackCert) {
-            console.log(2);
             setSendKey(msg);
           } else if (msg.sendKey && !msg.ackKey) {
-            console.log(3);
             setReceiveKey(msg);
-          } else if (msg.sendKey && msg.ackKey) {
-            console.log(4);
-            dispatch(addConnectedUser({
-              username: msg.senderUsername,
-              aesKey: msg.data
-            }));
-          }
+          } /* else if (msg.sendKey && msg.ackKey) {
+          } */
+        } else {
+          setMessageReceived(msg);
         }
       });
     });
@@ -213,25 +267,22 @@ const Home = () => {
           </Typography>
           <Divider />
           <List>
-            {requests.map(
-              (u) =>
-                (
-                  <ListItem
-                    key={u.username}
-                    secondaryAction={
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => accept(u)}
-                      >
-                        Accept
-                      </Button>
-                    }
+            {requests.map((u) => (
+              <ListItem
+                key={u.username}
+                secondaryAction={
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => accept(u)}
                   >
-                    <ListItemText primary={u.username} />
-                  </ListItem>
-                )
-            )}
+                    Accept
+                  </Button>
+                }
+              >
+                <ListItemText primary={u.username} />
+              </ListItem>
+            ))}
           </List>
           <Typography
             sx={{ textAlign: "center", py: 2 }}
@@ -242,30 +293,32 @@ const Home = () => {
           </Typography>
           <Divider />
           <List>
-            {connectedUsers.map(
-              (u) =>
-                (
-                  <ListItem
-                    key={u.username}
-                    secondaryAction={
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => accept(u)}
-                      >
-                        Chat
-                      </Button>
-                    }
+            {connectedUsers?.map((u) => (
+              <ListItem
+                key={u.username}
+                secondaryAction={
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setSelectedUser(u)}
                   >
-                    <ListItemText primary={u.username} />
-                  </ListItem>
-                )
-            )}
+                    Chat
+                  </Button>
+                }
+              >
+                <ListItemText primary={u.username} />
+              </ListItem>
+            ))}
           </List>
         </Paper>
       </Grid>
       <Grid item xs={9} sx={{ height: "inherit" }}>
-        <ChatBox />
+        {selectedUser && (
+          <ChatBox
+            username={selectedUser.username}
+            onSend={sendMessage}
+          />
+        )}
       </Grid>
     </Grid>
   );
