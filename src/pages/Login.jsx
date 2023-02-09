@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -13,7 +13,7 @@ import { useDispatch } from "react-redux";
 import { login } from "../redux/slices/userSlice";
 import CustomSnackbar from "../components/CustomSnackbar";
 import { unwrapResult } from "@reduxjs/toolkit";
-import forge from "node-forge";
+// import forge from "node-forge";
 import { setActiveUsers, setCertificate } from "../redux/slices/chatSlice";
 
 const Login = () => {
@@ -36,7 +36,6 @@ const Login = () => {
     message: "",
     type: "error"
   });
-  const [certFile] = useState(null);
 
   /* useEffect(() => {
     const message = {
@@ -55,76 +54,13 @@ const Login = () => {
     const md = forge.md.sha256.create();
     md.update(JSON.stringify(message), "utf8");
     const sign = privateKey.sign(md);
-    const b64 = window.btoa(sign, "utf8");
+    const sign64 = forge.util.encode64(sign);
+    console.log(sign64);
 
     // verify signature
-    const verified = publicKey.verify(md.digest().bytes(), window.atob(b64));
+    const verified = publicKey.verify(md.digest().bytes(), forge.util.decode64(sign64));
     console.log(verified);
   }, []); */
-
-  useEffect(() => {
-    /* window.addEventListener("beforeunload", (e) => {
-      e.preventDefault();
-      localStorage.setItem("aaa", "asfasf");
-      e.returnValue = "Are you sure";
-    }); */
-    if (certFile) {
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        // binary data
-        const p12Asn1 = forge.asn1.fromDer(e.target.result);
-        // decrypt p12 using the password 'password'
-        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, "sigurnost");
-        // console.log(p12);
-        const bags = p12.getBags({ friendlyName: "marko12" });
-        // console.log(bags);
-        // private key
-        const key = bags.friendlyName[0].key;
-        // console.log(key);
-        // cert
-        const cert = bags.friendlyName[1];
-        // console.log(JSON.stringify(cert));
-
-        const pubKey = cert.cert.publicKey;
-        // console.log(pubKey);
-
-        // signature
-        const md = forge.md.sha256.create();
-        md.update("Hello", "utf8");
-        const sign = key.sign(md);
-
-        // verify signature
-        const verified = pubKey.verify(md.digest().bytes(), sign);
-        console.log(verified);
-
-        // aes 256
-        const aesKey = forge.random.getBytesSync(32);
-        const aesIv = forge.random.getBytesSync(32);
-        const cipher = forge.cipher.createCipher("AES-CBC", aesKey);
-        cipher.start({ iv: aesIv });
-        cipher.update(forge.util.createBuffer("Hello world!"));
-        cipher.finish();
-        const encrypted = cipher.output;
-        console.log(encrypted);
-
-        const decipher = forge.cipher.createDecipher("AES-CBC", aesKey);
-        decipher.start({ iv: aesIv });
-        decipher.update(encrypted);
-        decipher.finish();
-        const decrypted = decipher.output;
-        console.log(decrypted);
-
-        console.log(JSON.stringify({ key: aesKey, iv: aesIv }));
-
-        const rsaEncr = pubKey.encrypt(
-          JSON.stringify({ key: aesKey, iv: aesIv })
-        );
-        const rsaDecr = key.decrypt(rsaEncr);
-        console.log(rsaDecr);
-      };
-      reader.readAsBinaryString(certFile);
-    }
-  }, [certFile]);
 
   const handleSubmit = (event) => {
     event.preventDefault();

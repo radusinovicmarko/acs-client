@@ -29,8 +29,8 @@ const processMessage = (state, part) => {
 export const addPart = createAsyncThunk(
   "chat/addPart",
   (message, thunkAPI) => {
-    console.log(message);
     const data = JSON.parse(message.data);
+    console.log(data);
     if (message.image) {
       return cryptoService.steganographyDecode(data)
         .then((res) => {
@@ -86,10 +86,9 @@ const chatSlice = createSlice({
     addConnectedUser: (state, action) => {
       const connectedUser = action.payload;
       if (state.connectedUsers.filter((u) => u.username === connectedUser.username).length === 0) {
-        const pubKey = state.requests.filter((u) => u.username === connectedUser.username);
         state.activeUsers = state.activeUsers.filter((u) => u.username !== connectedUser.username);
         state.requests = state.requests.filter((u) => u.username !== connectedUser.username);
-        state.connectedUsers = [...state.connectedUsers, { ...connectedUser, pubKey }];
+        state.connectedUsers = [...state.connectedUsers, connectedUser];
       }
     },
     addMessage: (state, action) => {
@@ -129,7 +128,12 @@ const chatSlice = createSlice({
         (u) => u.username === action.payload.senderUsername
       )[0].aesKey;
       const part = cryptoService.decryptAes(aesKey, data);
-      processMessage(state, part);
+      const pubKey = state.connectedUsers.filter(
+        (u) => u.username === action.payload.senderUsername
+      )[0].pubKey;
+      if (cryptoService.verify(pubKey, action.payload.sign, part)) {
+        processMessage(state, part);
+      }
     });
   }
 });

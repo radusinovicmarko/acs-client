@@ -60,8 +60,7 @@ const Home = () => {
         noSegments: parts.length,
         segmentSerial: i++
       };
-      // data = { ...data, sign: cryptoService.sign(privateKey, data) };
-      console.log(data);
+      const sign = cryptoService.sign(privateKey, data);
       const encData = JSON.stringify(
         cryptoService.encyptAes(selectedUser.aesKey, data)
       );
@@ -77,7 +76,8 @@ const Home = () => {
             sendKey: false,
             ackKey: false,
             fin: false,
-            image: true
+            image: true,
+            sign
           };
           stompClient.send("/acs/message", {}, JSON.stringify(message));
         });
@@ -92,7 +92,8 @@ const Home = () => {
           sendKey: false,
           ackKey: false,
           fin: false,
-          image: false
+          image: false,
+          sign
         };
         stompClient.send("/acs/message", {}, JSON.stringify(message));
       }
@@ -140,7 +141,8 @@ const Home = () => {
           addConnectedUser({
             username: sendKey.senderUsername,
             aesKey,
-            messages: []
+            messages: [],
+            pubKey: receiverPubKey
           })
         );
       }
@@ -161,6 +163,7 @@ const Home = () => {
         fin: false
       };
       stompClient.send("/acs/message", {}, JSON.stringify(msg));
+      const pubKey = requests.filter((r) => r.username === receiveKey.senderUsername)[0].cert.publicKey;
       dispatch(
         addConnectedUser({
           username: receiveKey.senderUsername,
@@ -170,7 +173,8 @@ const Home = () => {
               JSON.parse(receiveKey.data)
             )
           ),
-          messages: []
+          messages: [],
+          pubKey
         })
       );
     }

@@ -48,13 +48,13 @@ export const sign = (key, data) => {
   const md = forge.md.sha256.create();
   md.update(JSON.stringify(data), "utf8");
   const signature = key.sign(md);
-  return signature;
+  return forge.util.encode64(signature);
 };
 
 export const verify = (key, signature, data) => {
   const md = forge.md.sha256.create();
   md.update(JSON.stringify(data), "utf8");
-  return key.verify(md.digest().bytes(), signature);
+  return key.verify(md.digest().bytes(), forge.util.decode64(signature));
 };
 
 export const encyptAes = (aesKey, message) => {
