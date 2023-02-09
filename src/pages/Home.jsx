@@ -227,7 +227,7 @@ const Home = () => {
       reader.readAsDataURL(new Blob([res.data]));
     });
 
-    const sock = new SockJS("https://localhost:8080/chat");
+    const sock = new SockJS("https://chat:8080/chat");
     const stompClient = Stomp.over(sock);
 
     stompClient.connect({}, (frame) => {

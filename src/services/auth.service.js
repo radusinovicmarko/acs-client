@@ -4,8 +4,8 @@ const instance = base.service(false);
 const securedInstance = base.service(true);
 const sessionStorageKey = "auth";
 
-export const login = (username, password) =>
-  instance.post("/auth/login", { username, password }).then((res) => {
+export const login = (username, password, keystorePassword) =>
+  instance.post("/auth/login", { username, password, keystorePassword }).then((res) => {
     const user = res.data;
     if (user.token) {
       sessionStorage.setItem(sessionStorageKey, user.token);

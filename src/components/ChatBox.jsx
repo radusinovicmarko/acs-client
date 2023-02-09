@@ -46,7 +46,7 @@ const ChatBox = (props) => {
         <List>
           {messages?.map((m) => (
             <ListItem key={m.id}>
-              <ListItemText primary={m.content} secondary={moment(m.dateTime).format("DD. MM. yyyy. HH:mm:ss")} />
+              <ListItemText primary={m.sender + ": " + m.content} secondary={moment(m.dateTime).format("DD. MM. yyyy. HH:mm:ss")} />
             </ListItem>
           ))}
         </List>
@@ -57,6 +57,7 @@ const ChatBox = (props) => {
         onSubmit={(e) => {
           e.preventDefault();
           onSend(content);
+          setContent("");
         }}
         sx={{
           m: 0,

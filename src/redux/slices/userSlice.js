@@ -3,8 +3,8 @@ import authService from "../../services/auth.service";
 
 export const login = createAsyncThunk(
   "user/login",
-  ({ username, password }, thunkAPI) =>
-    authService.login(username, password).catch(thunkAPI.rejectWithValue)
+  ({ username, password, keystorePassword }, thunkAPI) =>
+    authService.login(username, password, keystorePassword).catch(thunkAPI.rejectWithValue)
 );
 
 export const state = createAsyncThunk("user/state", (_, { rejectWithValue }) =>
