@@ -20,10 +20,12 @@ import ChatBox from "../components/ChatBox";
 import {
   addConnectedUser,
   addMessage,
+  addPart,
   addRequest,
   setActiveUsers
 } from "../redux/slices/chatSlice";
 import cryptoService from "../services/crypto.service";
+import messageService from "../services/message.service";
 
 const Home = () => {
   const dispatch = useDispatch();
@@ -33,7 +35,7 @@ const Home = () => {
   const [sendKey, setSendKey] = useState(null);
   const [receiveKey, setReceiveKey] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [messageReceived, setMessageReceived] = useState(null);
+  const [messageReceived] = useState(null);
 
   const selector = createSelector(
     (state) => state.chat,
@@ -43,29 +45,46 @@ const Home = () => {
     useSelector(selector);
 
   const sendMessage = (content) => {
-    const data = {
-      content,
-      dateTime: moment()
-    };
-    const message = {
-      senderUsername: user.username,
-      receiverUsername: selectedUser.username,
-      data: JSON.stringify(cryptoService.encyptAes(selectedUser.aesKey, data)),
-      noSegments: 1,
-      segmentSerial: 1,
-      syn: false,
-      sendCert: false,
-      ackCert: false,
-      sendKey: false,
-      ackKey: false,
-      fin: false
-    };
-    console.log(JSON.parse(message.data));
-    stompClient.send("/acs/message", {}, JSON.stringify(message));
-    dispatch(addMessage({
-      username: selectedUser.username,
-      message: data
-    }));
+    const parts = messageService.segmentMessage(content);
+    const id = Date.now();
+    const dateTime = moment();
+    let i = 1;
+    parts.forEach((p) => {
+      const data = {
+        content: p,
+        dateTime,
+        id,
+        sender: user.username,
+        noSegments: parts.length,
+        segmentSerial: i++
+      };
+      // data = { ...data, sign: JSON.stringify(cryptoService.sign(privateKey, data)) };
+      const message = {
+        senderUsername: user.username,
+        receiverUsername: selectedUser.username,
+        data: JSON.stringify(
+          cryptoService.encyptAes(selectedUser.aesKey, data)
+        ),
+        syn: false,
+        sendCert: false,
+        ackCert: false,
+        sendKey: false,
+        ackKey: false,
+        fin: false
+      };
+      stompClient.send("/acs/message", {}, JSON.stringify(message));
+    });
+    dispatch(
+      addMessage({
+        username: selectedUser.username,
+        message: {
+          content,
+          dateTime,
+          id,
+          sender: user.username
+        }
+      })
+    );
   };
 
   useEffect(() => {
@@ -82,8 +101,6 @@ const Home = () => {
         senderUsername: user.username,
         receiverUsername: sendKey.senderUsername,
         data: JSON.stringify(aesKeyEnc),
-        noSegments: 1,
-        segmentSerial: 1,
         syn: true,
         sendCert: false,
         ackCert: false,
@@ -91,7 +108,6 @@ const Home = () => {
         ackKey: false,
         fin: false
       };
-      console.log(msg);
       stompClient.send("/acs/message", {}, JSON.stringify(msg));
       dispatch(
         addConnectedUser({
@@ -109,8 +125,6 @@ const Home = () => {
         senderUsername: user.username,
         receiverUsername: receiveKey.senderUsername,
         data: receiveKey.data,
-        noSegments: 1,
-        segmentSerial: 1,
         syn: true,
         sendCert: false,
         ackCert: false,
@@ -136,13 +150,14 @@ const Home = () => {
 
   useEffect(() => {
     if (messageReceived) {
-      const data = JSON.parse(messageReceived.data);
-      console.log(data);
-      const aesKey = connectedUsers.filter((u) => u.username === messageReceived.senderUsername)[0].aesKey;
-      dispatch(addMessage({
-        username: messageReceived.senderUsername,
-        message: cryptoService.decryptAes(aesKey, data)
-      }));
+      /* const data = JSON.parse(messageReceived.data);
+      const aesKey = connectedUsers.filter(
+        (u) => u.username === messageReceived.senderUsername
+      )[0].aesKey;
+      console.log(2);
+      const message = cryptoService.decryptAes(aesKey, data);
+      console.log(3); */
+      dispatch(addPart(messageReceived));
     }
   }, [messageReceived]);
 
@@ -151,8 +166,6 @@ const Home = () => {
       senderUsername: user.username,
       receiverUsername: receiver.username,
       data: cryptoService.certificateToPem(certificate),
-      noSegments: 1,
-      segmentSerial: 1,
       syn: true,
       sendCert: true,
       ackCert: false,
@@ -160,7 +173,6 @@ const Home = () => {
       ackKey: false,
       fin: false
     };
-    console.log(message);
     stompClient.send("/acs/message", {}, JSON.stringify(message));
   };
 
@@ -169,8 +181,6 @@ const Home = () => {
       senderUsername: user.username,
       receiverUsername: receiver.username,
       data: cryptoService.certificateToPem(certificate),
-      noSegments: 1,
-      segmentSerial: 1,
       syn: true,
       sendCert: true,
       ackCert: true,
@@ -178,8 +188,11 @@ const Home = () => {
       ackKey: false,
       fin: false
     };
-    console.log(message);
     stompClient.send("/acs/message", {}, JSON.stringify(message));
+  };
+
+  const disconnect = () => {
+    if (stompClient) stompClient.disconnect();
   };
 
   useEffect(() => {
@@ -207,11 +220,12 @@ const Home = () => {
           } /* else if (msg.sendKey && msg.ackKey) {
           } */
         } else {
-          setMessageReceived(msg);
+          dispatch(addPart(msg));
         }
       });
     });
     setStompClient(stompClient);
+    return disconnect;
   }, []);
 
   return (
@@ -314,10 +328,7 @@ const Home = () => {
       </Grid>
       <Grid item xs={9} sx={{ height: "inherit" }}>
         {selectedUser && (
-          <ChatBox
-            username={selectedUser.username}
-            onSend={sendMessage}
-          />
+          <ChatBox username={selectedUser.username} onSend={sendMessage} />
         )}
       </Grid>
     </Grid>

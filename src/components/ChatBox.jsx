@@ -21,7 +21,7 @@ const ChatBox = (props) => {
 
   const selector = createSelector(
     (state) => state.chat,
-    (chat) => chat.connectedUsers.filter((u) => u.username === username)[0].messages
+    (chat) => chat.connectedUsers.filter((u) => u.username === username)[0]?.messages
   );
   const messages = useSelector(selector);
 
@@ -39,12 +39,13 @@ const ChatBox = (props) => {
           borderColor: "inherit",
           borderRadius: 1,
           mt: "20px",
-          minHeight: "70vh"
+          height: "70vh",
+          overflow: "auto"
         }}
       >
         <List>
-          {messages.map((m) => (
-            <ListItem key={Math.random()}>
+          {messages?.map((m) => (
+            <ListItem key={m.id}>
               <ListItemText primary={m.content} secondary={moment(m.dateTime).format("DD. MM. yyyy. HH:mm:ss")} />
             </ListItem>
           ))}

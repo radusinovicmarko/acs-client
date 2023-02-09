@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCertificateFromDer } from "../../services/crypto.service";
+import cryptoService, { getCertificateFromDer } from "../../services/crypto.service";
+import messageService from "../../services/message.service";
 
 const chatSlice = createSlice({
   name: "chat",
@@ -8,7 +9,8 @@ const chatSlice = createSlice({
     requests: [],
     certificate: null,
     privateKey: null,
-    connectedUsers: []
+    connectedUsers: [],
+    messages: []
   },
   reducers: {
     setActiveUsers: (state, action) => {
@@ -24,6 +26,7 @@ const chatSlice = createSlice({
       state.activeUsers = [];
       state.certificate = null;
       state.connectedUsers = [];
+      state.messages = [];
     },
     addRequest: (state, action) => {
       if (state.requests.filter((r) => r.id === action.payload.id).length === 0) {
@@ -32,24 +35,53 @@ const chatSlice = createSlice({
     },
     addConnectedUser: (state, action) => {
       const connectedUser = action.payload;
-      console.log(connectedUser);
       if (state.connectedUsers.filter((u) => u.username === connectedUser.username).length === 0) {
+        const pubKey = state.requests.filter((u) => u.username === connectedUser.username);
         state.activeUsers = state.activeUsers.filter((u) => u.username !== connectedUser.username);
         state.requests = state.requests.filter((u) => u.username !== connectedUser.username);
-        state.connectedUsers = [...state.connectedUsers, connectedUser];
+        state.connectedUsers = [...state.connectedUsers, { ...connectedUser, pubKey }];
       }
     },
     addMessage: (state, action) => {
       const { username, message } = action.payload;
       state.connectedUsers.forEach((u) => {
         if (u.username === username) {
-          if (u.messages.filter((m) => m.dateTime === message.dateTime).length === 0) {
+          if (u.messages.filter((m) => m.id === message.id).length === 0) {
             u.messages = [...u.messages, message];
           }
         }
       });
+    },
+    addPart: (state, action) => {
+      console.log(action.payload);
+      const data = JSON.parse(action.payload.data);
+      const aesKey = state.connectedUsers.filter(
+        (u) => u.username === action.payload.senderUsername
+      )[0].aesKey;
+      const part = cryptoService.decryptAes(aesKey, data);
+      // const messageWhole = action.payload;
+      const exists = state.messages.filter((m) => m.id === part.id).length > 0;
+      if (exists) {
+        const message = state.messages.filter((m) => m.id === part.id)[0];
+        if (message.parts.filter((p) => p.segmentSerial === part.segmentSerial).length === 0) {
+          message.parts = [...message.parts, part];
+        }
+      } else {
+        state.messages.push({ id: part.id, noSegments: part.noSegments, parts: [part] });
+      }
+      const message = state.messages.filter((m) => m.id === part.id)[0];
+      if (message.parts.length === message.noSegments) {
+        const msg = messageService.combineParts(message.parts);
+        state.connectedUsers.forEach((u) => {
+          if (u.username === msg.sender) {
+            if (u.messages.filter((m) => m.id === msg.id).length === 0) {
+              u.messages = [...u.messages, msg];
+            }
+          }
+        });
+      }
     }
   }
 });
-export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser, addMessage } = chatSlice.actions;
+export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser, addMessage, addPart } = chatSlice.actions;
 export default chatSlice.reducer;

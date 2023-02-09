@@ -43,23 +43,44 @@ export const pubKeyFromPem = (pem) => {
   return pki.privateKeyFromPem(pem);
 };
 
+export const sign = (key, data) => {
+  const md = forge.md.sha256.create();
+  md.update(JSON.stringify(data), "utf8");
+  return key.sign(md);
+};
+
+export const verify = (key, signature, data) => {
+  const md = forge.md.sha256.create();
+  md.update(JSON.stringify(data), "utf8");
+  return key.verify(md.digest().bytes(), signature);
+};
+
 export const encyptAes = (aesKey, message) => {
   const cipher = forge.cipher.createCipher(aesKey.alg, aesKey.aesKey);
   cipher.start({ iv: aesKey.aesIv });
   cipher.update(forge.util.createBuffer(JSON.stringify(message)));
   cipher.finish();
   const out = cipher.output;
-  console.log(out);
   return out;
 };
 
 export const decryptAes = (aesKey, messageEnc) => {
   const decipher = forge.cipher.createDecipher(aesKey.alg, aesKey.aesKey);
   decipher.start({ iv: aesKey.aesIv });
-  console.log(messageEnc);
   decipher.update(forge.util.createBuffer(messageEnc));
   decipher.finish();
   return JSON.parse(decipher.output);
+};
+
+export const decryptAesPromise = (aesKey, messageEnc) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const decryptedMessage = decryptAes(aesKey, messageEnc);
+      resolve(decryptedMessage);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 export default {
@@ -72,5 +93,8 @@ export default {
   pubKeyToPem,
   pubKeyFromPem,
   encyptAes,
-  decryptAes
+  decryptAes,
+  sign,
+  verify,
+  decryptAesPromise
 };

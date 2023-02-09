@@ -14,7 +14,7 @@ import { login } from "../redux/slices/userSlice";
 import CustomSnackbar from "../components/CustomSnackbar";
 import { unwrapResult } from "@reduxjs/toolkit";
 import forge from "node-forge";
-import { setCertificate } from "../redux/slices/chatSlice";
+import { setActiveUsers, setCertificate } from "../redux/slices/chatSlice";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -114,6 +114,7 @@ const Login = () => {
             cn: res.username
           })
         );
+        dispatch(setActiveUsers(res.activeUsers));
       })
       .catch(() =>
         setSnackbarState({
