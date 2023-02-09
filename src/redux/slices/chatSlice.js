@@ -72,8 +72,15 @@ const chatSlice = createSlice({
       state.messages = [];
     },
     addRequest: (state, action) => {
-      if (state.requests.filter((r) => r.id === action.payload.id).length === 0) {
-        state.requests = [...state.requests, action.payload];
+      const cert = action.payload.cert;
+      if (
+        cert.verify(cert) &&
+        Date.now() > cert.validity.notBefore.getTime() &&
+        Date.now() < cert.validity.notAfter.getTime()
+      ) {
+        if (state.requests.filter((r) => r.id === action.payload.id).length === 0) {
+          state.requests = [...state.requests, action.payload];
+        }
       }
     },
     addConnectedUser: (state, action) => {
@@ -116,6 +123,7 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(addPart.fulfilled, (state, action) => {
+      console.log(action.payload.data);
       const data = JSON.parse(action.payload.data);
       const aesKey = state.connectedUsers.filter(
         (u) => u.username === action.payload.senderUsername

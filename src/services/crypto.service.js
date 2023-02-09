@@ -47,7 +47,8 @@ export const pubKeyFromPem = (pem) => {
 export const sign = (key, data) => {
   const md = forge.md.sha256.create();
   md.update(JSON.stringify(data), "utf8");
-  return key.sign(md);
+  const signature = key.sign(md);
+  return signature;
 };
 
 export const verify = (key, signature, data) => {

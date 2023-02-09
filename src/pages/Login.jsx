@@ -38,6 +38,30 @@ const Login = () => {
   });
   const [certFile] = useState(null);
 
+  /* useEffect(() => {
+    const message = {
+      senderUsername: "user.username",
+      receiverUsername: "receiver.username",
+      data: "cryptoService.certificateToPem(certificate)",
+      syn: true,
+      sendCert: true,
+      ackCert: true,
+      sendKey: false,
+      ackKey: false,
+      fin: false
+    };
+    const { publicKey, privateKey } = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
+    // signature
+    const md = forge.md.sha256.create();
+    md.update(JSON.stringify(message), "utf8");
+    const sign = privateKey.sign(md);
+    const b64 = window.btoa(sign, "utf8");
+
+    // verify signature
+    const verified = publicKey.verify(md.digest().bytes(), window.atob(b64));
+    console.log(verified);
+  }, []); */
+
   useEffect(() => {
     /* window.addEventListener("beforeunload", (e) => {
       e.preventDefault();

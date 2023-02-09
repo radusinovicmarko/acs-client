@@ -36,7 +36,6 @@ const Home = () => {
   const [sendKey, setSendKey] = useState(null);
   const [receiveKey, setReceiveKey] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [messageReceived] = useState(null);
   const [image, setImage] = useState(null);
 
   const selector = createSelector(
@@ -61,8 +60,11 @@ const Home = () => {
         noSegments: parts.length,
         segmentSerial: i++
       };
-      // data = { ...data, sign: JSON.stringify(cryptoService.sign(privateKey, data)) };
-      const encData = JSON.stringify(cryptoService.encyptAes(selectedUser.aesKey, data));
+      // data = { ...data, sign: cryptoService.sign(privateKey, data) };
+      console.log(data);
+      const encData = JSON.stringify(
+        cryptoService.encyptAes(selectedUser.aesKey, data)
+      );
       if (steganographyIndex === i) {
         cryptoService.steganographyEncode(encData, image).then((res) => {
           const message = {
@@ -110,33 +112,38 @@ const Home = () => {
 
   useEffect(() => {
     if (sendKey) {
-      const receiverPubKey = cryptoService.certificateFromPem(
-        sendKey.data
-      ).publicKey;
-      const aesKey = cryptoService.createAesKey();
-      const aesKeyEnc = cryptoService.encryptWithPublicKey(
-        receiverPubKey,
-        JSON.stringify(aesKey)
-      );
-      const msg = {
-        senderUsername: user.username,
-        receiverUsername: sendKey.senderUsername,
-        data: JSON.stringify(aesKeyEnc),
-        syn: true,
-        sendCert: false,
-        ackCert: false,
-        sendKey: true,
-        ackKey: false,
-        fin: false
-      };
-      stompClient.send("/acs/message", {}, JSON.stringify(msg));
-      dispatch(
-        addConnectedUser({
-          username: sendKey.senderUsername,
-          aesKey,
-          messages: []
-        })
-      );
+      const receiverCert = cryptoService.certificateFromPem(sendKey.data);
+      const receiverPubKey = receiverCert.publicKey;
+      if (
+        receiverCert.verify(receiverCert) &&
+        Date.now() > receiverCert.validity.notBefore.getTime() &&
+        Date.now() < receiverCert.validity.notAfter.getTime()
+      ) {
+        const aesKey = cryptoService.createAesKey();
+        const aesKeyEnc = cryptoService.encryptWithPublicKey(
+          receiverPubKey,
+          JSON.stringify(aesKey)
+        );
+        const msg = {
+          senderUsername: user.username,
+          receiverUsername: sendKey.senderUsername,
+          data: JSON.stringify(aesKeyEnc),
+          syn: true,
+          sendCert: false,
+          ackCert: false,
+          sendKey: true,
+          ackKey: false,
+          fin: false
+        };
+        stompClient.send("/acs/message", {}, JSON.stringify(msg));
+        dispatch(
+          addConnectedUser({
+            username: sendKey.senderUsername,
+            aesKey,
+            messages: []
+          })
+        );
+      }
     }
   }, [sendKey]);
 
@@ -168,19 +175,6 @@ const Home = () => {
       );
     }
   }, [receiveKey]);
-
-  useEffect(() => {
-    if (messageReceived) {
-      /* const data = JSON.parse(messageReceived.data);
-      const aesKey = connectedUsers.filter(
-        (u) => u.username === messageReceived.senderUsername
-      )[0].aesKey;
-      console.log(2);
-      const message = cryptoService.decryptAes(aesKey, data);
-      console.log(3); */
-      dispatch(addPart(messageReceived));
-    }
-  }, [messageReceived]);
 
   const connect = (receiver) => {
     const message = {
@@ -217,15 +211,17 @@ const Home = () => {
   };
 
   useEffect(() => {
-    axios.get("/images/chat.jpg", {
-      responseType: "blob"
-    }).then((res) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result);
-      };
-      reader.readAsDataURL(new Blob([res.data]));
-    });
+    axios
+      .get("/images/chat.jpg", {
+        responseType: "blob"
+      })
+      .then((res) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImage(reader.result);
+        };
+        reader.readAsDataURL(new Blob([res.data]));
+      });
 
     const sock = new SockJS("https://chat:8080/chat");
     const stompClient = Stomp.over(sock);
