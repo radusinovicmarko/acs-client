@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import cryptoService, { getCertificateFromDer } from "../../services/crypto.service";
 import messageService from "../../services/message.service";
@@ -30,7 +29,6 @@ export const addPart = createAsyncThunk(
   "chat/addPart",
   (message, thunkAPI) => {
     const data = JSON.parse(message.data);
-    console.log(data);
     if (message.image) {
       return cryptoService.steganographyDecode(data)
         .then((res) => {
@@ -101,28 +99,9 @@ const chatSlice = createSlice({
         }
       });
     }
-    /* addPart: (state, action) => {
-      const data = JSON.parse(action.payload.data);
-      const aesKey = state.connectedUsers.filter(
-        (u) => u.username === action.payload.senderUsername
-      )[0].aesKey;
-      if (action.payload.image) {
-        cryptoService.steganographyDecode(data)
-          .then((res) => {
-            const part = cryptoService.decryptAes(aesKey, JSON.parse(res));
-            // const messageWhole = action.payload;
-            processMessage(state, part);
-          });
-      } else {
-        const part = cryptoService.decryptAes(aesKey, data);
-        // const messageWhole = action.payload;
-        processMessage(state, part);
-      }
-    } */
   },
   extraReducers: (builder) => {
     builder.addCase(addPart.fulfilled, (state, action) => {
-      console.log(action.payload.data);
       const data = JSON.parse(action.payload.data);
       const aesKey = state.connectedUsers.filter(
         (u) => u.username === action.payload.senderUsername

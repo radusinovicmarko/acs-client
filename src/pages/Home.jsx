@@ -1,11 +1,9 @@
 import {
-  Avatar,
   Button,
   Divider,
   Grid,
   List,
   ListItem,
-  ListItemAvatar,
   ListItemText,
   Paper,
   Typography
@@ -248,8 +246,7 @@ const Home = () => {
             setSendKey(msg);
           } else if (msg.sendKey && !msg.ackKey) {
             setReceiveKey(msg);
-          } /* else if (msg.sendKey && msg.ackKey) {
-          } */
+          }
         } else {
           dispatch(addPart(msg));
         }
@@ -295,9 +292,6 @@ const Home = () => {
                       </Button>
                     }
                   >
-                    <ListItemAvatar>
-                      <Avatar>{u.username.charAt(0)}</Avatar>
-                    </ListItemAvatar>
                     <ListItemText primary={u.username} />
                   </ListItem>
                 )

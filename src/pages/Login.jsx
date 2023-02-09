@@ -13,7 +13,6 @@ import { useDispatch } from "react-redux";
 import { login } from "../redux/slices/userSlice";
 import CustomSnackbar from "../components/CustomSnackbar";
 import { unwrapResult } from "@reduxjs/toolkit";
-// import forge from "node-forge";
 import { setActiveUsers, setCertificate } from "../redux/slices/chatSlice";
 
 const Login = () => {
@@ -36,31 +35,6 @@ const Login = () => {
     message: "",
     type: "error"
   });
-
-  /* useEffect(() => {
-    const message = {
-      senderUsername: "user.username",
-      receiverUsername: "receiver.username",
-      data: "cryptoService.certificateToPem(certificate)",
-      syn: true,
-      sendCert: true,
-      ackCert: true,
-      sendKey: false,
-      ackKey: false,
-      fin: false
-    };
-    const { publicKey, privateKey } = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
-    // signature
-    const md = forge.md.sha256.create();
-    md.update(JSON.stringify(message), "utf8");
-    const sign = privateKey.sign(md);
-    const sign64 = forge.util.encode64(sign);
-    console.log(sign64);
-
-    // verify signature
-    const verified = publicKey.verify(md.digest().bytes(), forge.util.decode64(sign64));
-    console.log(verified);
-  }, []); */
 
   const handleSubmit = (event) => {
     event.preventDefault();
