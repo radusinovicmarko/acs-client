@@ -1,6 +1,49 @@
-import { createSlice } from "@reduxjs/toolkit";
+/* eslint-disable no-unused-vars */
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import cryptoService, { getCertificateFromDer } from "../../services/crypto.service";
 import messageService from "../../services/message.service";
+
+const processMessage = (state, part) => {
+  const exists = state.messages.filter((m) => m.id === part.id).length > 0;
+  if (exists) {
+    const message = state.messages.filter((m) => m.id === part.id)[0];
+    if (message.parts.filter((p) => p.segmentSerial === part.segmentSerial).length === 0) {
+      message.parts = [...message.parts, part];
+    }
+  } else {
+    state.messages.push({ id: part.id, noSegments: part.noSegments, parts: [part] });
+  }
+  const message = state.messages.filter((m) => m.id === part.id)[0];
+  if (message.parts.length === message.noSegments) {
+    const msg = messageService.combineParts(message.parts);
+    state.connectedUsers.forEach((u) => {
+      if (u.username === msg.sender) {
+        if (u.messages.filter((m) => m.id === msg.id).length === 0) {
+          u.messages = [...u.messages, msg];
+        }
+      }
+    });
+  }
+};
+
+export const addPart = createAsyncThunk(
+  "chat/addPart",
+  (message, thunkAPI) => {
+    console.log(message);
+    const data = JSON.parse(message.data);
+    if (message.image) {
+      return cryptoService.steganographyDecode(data)
+        .then((res) => {
+          return {
+            ...message,
+            data: res
+          };
+        });
+    } else {
+      return message;
+    }
+  }
+);
 
 const chatSlice = createSlice({
   name: "chat",
@@ -51,37 +94,36 @@ const chatSlice = createSlice({
           }
         }
       });
-    },
-    addPart: (state, action) => {
-      console.log(action.payload);
+    }
+    /* addPart: (state, action) => {
+      const data = JSON.parse(action.payload.data);
+      const aesKey = state.connectedUsers.filter(
+        (u) => u.username === action.payload.senderUsername
+      )[0].aesKey;
+      if (action.payload.image) {
+        cryptoService.steganographyDecode(data)
+          .then((res) => {
+            const part = cryptoService.decryptAes(aesKey, JSON.parse(res));
+            // const messageWhole = action.payload;
+            processMessage(state, part);
+          });
+      } else {
+        const part = cryptoService.decryptAes(aesKey, data);
+        // const messageWhole = action.payload;
+        processMessage(state, part);
+      }
+    } */
+  },
+  extraReducers: (builder) => {
+    builder.addCase(addPart.fulfilled, (state, action) => {
       const data = JSON.parse(action.payload.data);
       const aesKey = state.connectedUsers.filter(
         (u) => u.username === action.payload.senderUsername
       )[0].aesKey;
       const part = cryptoService.decryptAes(aesKey, data);
-      // const messageWhole = action.payload;
-      const exists = state.messages.filter((m) => m.id === part.id).length > 0;
-      if (exists) {
-        const message = state.messages.filter((m) => m.id === part.id)[0];
-        if (message.parts.filter((p) => p.segmentSerial === part.segmentSerial).length === 0) {
-          message.parts = [...message.parts, part];
-        }
-      } else {
-        state.messages.push({ id: part.id, noSegments: part.noSegments, parts: [part] });
-      }
-      const message = state.messages.filter((m) => m.id === part.id)[0];
-      if (message.parts.length === message.noSegments) {
-        const msg = messageService.combineParts(message.parts);
-        state.connectedUsers.forEach((u) => {
-          if (u.username === msg.sender) {
-            if (u.messages.filter((m) => m.id === msg.id).length === 0) {
-              u.messages = [...u.messages, msg];
-            }
-          }
-        });
-      }
-    }
+      processMessage(state, part);
+    });
   }
 });
-export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser, addMessage, addPart } = chatSlice.actions;
+export const { setActiveUsers, setCertificate, clear, addRequest, addConnectedUser, addMessage } = chatSlice.actions;
 export default chatSlice.reducer;

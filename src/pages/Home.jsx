@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { createSelector } from "@reduxjs/toolkit";
 import { Stomp } from "@stomp/stompjs";
+import axios from "axios";
 import moment from "moment/moment";
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -36,6 +37,7 @@ const Home = () => {
   const [receiveKey, setReceiveKey] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messageReceived] = useState(null);
+  const [image, setImage] = useState(null);
 
   const selector = createSelector(
     (state) => state.chat,
@@ -49,6 +51,7 @@ const Home = () => {
     const id = Date.now();
     const dateTime = moment();
     let i = 1;
+    const steganographyIndex = Math.floor(Math.random() * parts.length) + 1;
     parts.forEach((p) => {
       const data = {
         content: p,
@@ -59,20 +62,38 @@ const Home = () => {
         segmentSerial: i++
       };
       // data = { ...data, sign: JSON.stringify(cryptoService.sign(privateKey, data)) };
-      const message = {
-        senderUsername: user.username,
-        receiverUsername: selectedUser.username,
-        data: JSON.stringify(
-          cryptoService.encyptAes(selectedUser.aesKey, data)
-        ),
-        syn: false,
-        sendCert: false,
-        ackCert: false,
-        sendKey: false,
-        ackKey: false,
-        fin: false
-      };
-      stompClient.send("/acs/message", {}, JSON.stringify(message));
+      const encData = JSON.stringify(cryptoService.encyptAes(selectedUser.aesKey, data));
+      if (steganographyIndex === i) {
+        cryptoService.steganographyEncode(encData, image).then((res) => {
+          const message = {
+            senderUsername: user.username,
+            receiverUsername: selectedUser.username,
+            data: JSON.stringify(res),
+            syn: false,
+            sendCert: false,
+            ackCert: false,
+            sendKey: false,
+            ackKey: false,
+            fin: false,
+            image: true
+          };
+          stompClient.send("/acs/message", {}, JSON.stringify(message));
+        });
+      } else {
+        const message = {
+          senderUsername: user.username,
+          receiverUsername: selectedUser.username,
+          data: encData,
+          syn: false,
+          sendCert: false,
+          ackCert: false,
+          sendKey: false,
+          ackKey: false,
+          fin: false,
+          image: false
+        };
+        stompClient.send("/acs/message", {}, JSON.stringify(message));
+      }
     });
     dispatch(
       addMessage({
@@ -196,6 +217,16 @@ const Home = () => {
   };
 
   useEffect(() => {
+    axios.get("/images/chat.jpg", {
+      responseType: "blob"
+    }).then((res) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result);
+      };
+      reader.readAsDataURL(new Blob([res.data]));
+    });
+
     const sock = new SockJS("https://localhost:8080/chat");
     const stompClient = Stomp.over(sock);
 

@@ -1,4 +1,5 @@
 import forge, { pki } from "node-forge";
+import { encode, decode } from "ts-steganography";
 
 export const getCertificateFromDer = (cert, password, cn) => {
   const p12Der = forge.util.decode64(cert);
@@ -83,6 +84,12 @@ export const decryptAesPromise = (aesKey, messageEnc) => {
   });
 };
 
+export const steganographyEncode = (data, image) => {
+  return encode(data, image).then((res) => res);
+};
+
+export const steganographyDecode = async (data) => decode(data).then((res) => res);
+
 export default {
   getCertificateFromDer,
   createAesKey,
@@ -96,5 +103,7 @@ export default {
   decryptAes,
   sign,
   verify,
-  decryptAesPromise
+  decryptAesPromise,
+  steganographyEncode,
+  steganographyDecode
 };
