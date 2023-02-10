@@ -49,6 +49,11 @@ const ChatBox = (props) => {
               <ListItemText primary={m.sender + ": " + m.content} secondary={moment(m.dateTime).format("DD. MM. yyyy. HH:mm:ss")} />
             </ListItem>
           ))}
+          {!messages && (
+            <ListItem key={1}>
+              <ListItemText primary={"Korisnik se odjavio."} />
+            </ListItem>
+          )}
         </List>
       </Box>
       <Box
@@ -79,6 +84,7 @@ const ChatBox = (props) => {
               minRows={1}
               value={content}
               onChange={(event) => setContent(event.target.value)}
+              disabled={!messages}
             />
           </Grid>
           <Grid item xs={2}>
@@ -88,6 +94,7 @@ const ChatBox = (props) => {
               sx={{ mt: 1.2, ml: 1 }}
               color="inherit"
               endIcon={<SendOutlined />}
+              disabled={!messages}
             >
               Send
             </Button>

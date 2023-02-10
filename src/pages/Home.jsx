@@ -208,10 +208,6 @@ const Home = () => {
     stompClient.send("/acs/message", {}, JSON.stringify(message));
   };
 
-  const disconnect = () => {
-    if (stompClient) stompClient.disconnect();
-  };
-
   useEffect(() => {
     axios
       .get("/images/chat.jpg", {
@@ -253,7 +249,7 @@ const Home = () => {
       });
     });
     setStompClient(stompClient);
-    return disconnect;
+    return () => stompClient.disconnect();
   }, []);
 
   return (

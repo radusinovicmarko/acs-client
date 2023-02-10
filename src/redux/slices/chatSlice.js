@@ -56,6 +56,16 @@ const chatSlice = createSlice({
   reducers: {
     setActiveUsers: (state, action) => {
       state.activeUsers = action.payload;
+      let requestsTemp = [];
+      state.requests.forEach((r) => {
+        if (state.activeUsers.filter((u) => u.username === r.username).length !== 0) requestsTemp = [...requestsTemp, r];
+      });
+      state.requests = requestsTemp;
+      let connectedUsersTemp = [];
+      state.connectedUsers.forEach((cu) => {
+        if (state.activeUsers.filter((u) => u.username === cu.username).length !== 0) connectedUsersTemp = [...connectedUsersTemp, cu];
+      });
+      state.connectedUsers = connectedUsersTemp;
     },
     setCertificate: (state, action) => {
       const { cert, password, cn } = action.payload;
